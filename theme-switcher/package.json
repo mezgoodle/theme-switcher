@@ -18,6 +18,10 @@
       {
         "command": "theme-switcher.switchTheme",
         "title": "Switch Theme"
+      },
+      {
+        "command": "theme-switcher.forceCheck",
+        "title": "Force Check Theme"
       }
     ],
     "configuration": {

@@ -81,12 +81,20 @@ async function activate(context) {
     }
   }
 
-  function setTheme(themeName) {
+  async function setTheme(themeName) {
     console.log(`Switching to theme: ${themeName}`);
-    if (themeName) {
-      vscode.workspace
+    const availableThemes = vscode.extensions.all
+      .flatMap((extension) => extension.packageJSON.contributes?.themes || [])
+      .map((theme) => theme.label || theme.id);
+
+    if (availableThemes.includes(themeName)) {
+      await vscode.workspace
         .getConfiguration("workbench")
         .update("colorTheme", themeName, vscode.ConfigurationTarget.Global);
+      vscode.window.showInformationMessage(`Theme switched to ${themeName}`);
+    } else {
+      console.error(`Theme not found: ${themeName}`);
+      vscode.window.showErrorMessage(`Theme not found: ${themeName}`);
     }
   }
 
@@ -104,7 +112,6 @@ async function activate(context) {
       endTimeSetting === undefined
     ) {
       await promptForSettings();
-      // Рекурсивний виклик для перевірки часу та встановлення теми після отримання налаштувань
       await checkTimeAndSwitchTheme();
     } else {
       const now = new Date();
@@ -118,20 +125,38 @@ async function activate(context) {
     }
   }
 
-  await checkTimeAndSwitchTheme(); // Чекаємо завершення першої перевірки
+  vscode.workspace.onDidChangeConfiguration(async (event) => {
+    if (event.affectsConfiguration("themeSwitcher")) {
+      console.log("Configuration changed, rechecking themes...");
+      await checkTimeAndSwitchTheme();
+    }
+  });
+
+  await checkTimeAndSwitchTheme();
   setInterval(checkTimeAndSwitchTheme, 60000);
 
-  let disposable = vscode.commands.registerCommand(
+  let disposableSwitch = vscode.commands.registerCommand(
     "theme-switcher.switchTheme",
     async () => {
+      console.log("Manually triggering theme check...");
       await checkTimeAndSwitchTheme();
     }
   );
 
-  context.subscriptions.push(disposable);
+  let disposableForceCheck = vscode.commands.registerCommand(
+    "theme-switcher.forceCheck",
+    async () => {
+      console.log("Manually forcing theme change...");
+      await checkTimeAndSwitchTheme();
+    }
+  );
+
+  context.subscriptions.push(disposableSwitch, disposableForceCheck);
 }
 
-function deactivate() {}
+function deactivate() {
+  console.log("Theme Switcher deactivated!");
+}
 
 module.exports = {
   activate,
