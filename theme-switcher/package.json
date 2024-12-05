@@ -42,11 +42,6 @@
         "themeSwitcher.endTime": {
           "type": "integer",
           "description": "The hour to switch to the dark theme (0-23)."
-        },
-        "themeSwitcher.firstRun": {
-          "type": "boolean",
-          "default": true,
-          "description": "Indicates whether the extension has been run for the first time."
         }
       }
     }
