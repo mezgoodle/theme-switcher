@@ -27,10 +27,6 @@ async function activate1(context) {
     });
   }
 
-  function reloadWindow() {
-    vscode.commands.executeCommand("workbench.action.reloadWindow");
-  }
-
   async function getHour(type) {
     console.log(`Prompting for ${type} hour...`);
     let input = await vscode.window.showInputBox({
@@ -112,33 +108,6 @@ async function activate1(context) {
     }
   }
 
-  async function checkTimeAndSwitchTheme() {
-    console.log("Checking time and switching theme...");
-    const lightThemeSetting = config.get("lightTheme");
-    const darkThemeSetting = config.get("darkTheme");
-    const startTimeSetting = config.get("startTime");
-    const endTimeSetting = config.get("endTime");
-
-    if (
-      lightThemeSetting === undefined ||
-      darkThemeSetting === undefined ||
-      startTimeSetting === undefined ||
-      endTimeSetting === undefined
-    ) {
-      await promptForSettings();
-      await checkTimeAndSwitchTheme();
-    } else {
-      const now = new Date();
-      const hour = now.getHours();
-
-      if (hour >= startTimeSetting && hour < endTimeSetting) {
-        setTheme(lightThemeSetting);
-      } else {
-        setTheme(darkThemeSetting);
-      }
-    }
-  }
-
   vscode.workspace.onDidChangeConfiguration(async (event) => {
     if (event.affectsConfiguration("themeSwitcher")) {
       console.log("Configuration changed, rechecking themes...");
@@ -179,22 +148,55 @@ module.exports = {
 
 function activate(context) {
   const config = vscode.workspace.getConfiguration("themeSwitcher");
-  let darkThemeSetting = config.get("darkTheme");
-  if (darkThemeSetting === "") {
-    darkThemeSetting = "Dark Modern";
-  }
+  let { darkTheme, lightTheme } = getConfiguredThemes(config);
+  const allThemes = getAllThemes();
+  darkTheme = checkThemeAvailability(
+    allThemes,
+    darkTheme,
+    "Dark (Visual Studio)"
+  );
   // Перемикання теми
   vscode.workspace
     .getConfiguration("workbench")
-    .update("colorTheme", darkThemeSetting, vscode.ConfigurationTarget.Global)
+    .update("colorTheme", darkTheme, vscode.ConfigurationTarget.Global)
     .then(
       () => {
-        vscode.window.showInformationMessage(
-          `Тема перемикнута на ${darkThemeSetting}!`
-        );
+        vscode.window.showInformationMessage(`Theme switched to ${darkTheme}!`);
       },
       (error) => {
-        vscode.window.showErrorMessage(`Не вдалося змінити тему: ${error}`);
+        vscode.window.showErrorMessage(`Failed to switch theme: ${error}`);
       }
     );
+
+  // reload window
+  // reloadWindow();
+}
+
+function getConfigurationValue(config, key) {
+  return config.get(key);
+}
+
+function getAllThemes() {
+  return vscode.extensions.all
+    .flatMap((extension) => extension.packageJSON.contributes?.themes || [])
+    .map((theme) => theme.label || theme.id);
+}
+
+function getConfiguredThemes(config) {
+  const lightTheme = getConfigurationValue(config, "lightTheme");
+  const darkTheme = getConfigurationValue(config, "darkTheme");
+  return { lightTheme, darkTheme };
+}
+
+function checkThemeAvailability(allThemes, themeName, defaultThemeName) {
+  let theme = themeName;
+  if (theme === "" || theme === undefined || !allThemes.includes(theme)) {
+    theme = defaultThemeName;
+  }
+
+  return theme;
+}
+
+function reloadWindow() {
+  vscode.commands.executeCommand("workbench.action.reloadWindow");
 }
