@@ -16,12 +16,12 @@
   "contributes": {
     "commands": [
       {
-        "command": "theme-switcher.switchTheme",
-        "title": "Switch Theme"
+        "command": "theme-switcher.forceCheck",
+        "title": "Theme Switcher: Force Check Theme"
       },
       {
-        "command": "theme-switcher.forceCheck",
-        "title": "Force Check Theme"
+        "command": "theme-switcher.configure",
+        "title": "Theme Switcher: Configure"
       }
     ],
     "configuration": {
