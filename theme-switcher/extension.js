@@ -7,6 +7,7 @@ async function activate(context) {
   console.log("Theme Switcher activated!");
 
   const config = vscode.workspace.getConfiguration("themeSwitcher");
+  let currentTheme = null;
 
   async function getTheme(type) {
     console.log(`Prompting for ${type} theme...`);
@@ -52,15 +53,12 @@ async function activate(context) {
     if (lightTheme) {
       await updateConfig("lightTheme", lightTheme);
     }
-
     if (darkTheme) {
       await updateConfig("darkTheme", darkTheme);
     }
-
     if (startTime !== undefined) {
       await updateConfig("startTime", startTime);
     }
-
     if (endTime !== undefined) {
       await updateConfig("endTime", endTime);
     }
@@ -84,30 +82,38 @@ async function activate(context) {
     return { lightTheme, darkTheme, startTime, endTime, showNotifications };
   }
 
-  function setTheme(themeName, showNotifications) {
+  async function setTheme(themeName, showNotifications) {
     console.log(`Switching to theme: ${themeName}`);
     const allThemes = getAllThemes();
 
-    if (allThemes.includes(themeName)) {
-      vscode.workspace
-        .getConfiguration("workbench")
-        .update("colorTheme", themeName, vscode.ConfigurationTarget.Global)
-        .then(
-          () => {
-            if (showNotifications) {
-              vscode.window.showInformationMessage(
-                `Theme switched to ${themeName}`
-              );
-            }
-          },
-          (error) => {
-            vscode.window.showErrorMessage(`Failed to switch theme: ${error}`);
-          }
-        );
-    } else {
+    if (!allThemes.includes(themeName)) {
       console.error(`Theme not found: ${themeName}`);
       vscode.window.showErrorMessage(`Theme not found: ${themeName}`);
+      return;
     }
+    if (currentTheme === themeName) {
+      return;
+    }
+
+    const tempTheme =
+      currentTheme === "Light (Visual Studio)"
+        ? "Dark (Visual Studio)"
+        : "Light (Visual Studio)";
+    currentTheme = themeName;
+
+    await vscode.workspace
+      .getConfiguration("workbench")
+      .update("colorTheme", tempTheme, vscode.ConfigurationTarget.Global);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await vscode.workspace
+      .getConfiguration("workbench")
+      .update("colorTheme", themeName, vscode.ConfigurationTarget.Global);
+
+    if (showNotifications) {
+      vscode.window.showInformationMessage(`Theme switched to ${themeName}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await vscode.commands.executeCommand("workbench.action.reloadWindow");
   }
 
   async function checkTimeAndSwitchTheme() {
@@ -121,7 +127,7 @@ async function activate(context) {
       `Checking time. Current hour: ${currentHour}, Light theme: ${lightTheme}, Dark theme: ${darkTheme}, Start: ${startTime}, End: ${endTime}, isDayTime: ${isDayTime}, Theme to set: ${themeToSet}`
     );
 
-    setTheme(themeToSet, showNotifications);
+    await setTheme(themeToSet, showNotifications);
   }
 
   vscode.workspace.onDidChangeConfiguration(async (event) => {
